@@ -179,9 +179,16 @@ function HomePage() {
             id="plan"
             style={{ width: "100%", padding: "10px 6px" }}
             value={plan}
-            onChange={(e) => setPlan(e.target.value)}
+            onChange={(e) => {
+              if (e.target.value === "standard") {
+                return setPlan(process.env.STANDARD_PRICE_ID);
+              }
+              if (e.target.value === "premium") {
+                return setPlan(process.env.PREMIUM_PRICE_ID);
+              }
+              return;
+            }}
           >
-            <option value="basic">Basic</option>
             <option value="standard">Standard</option>
             <option value="premium">Premium</option>
           </select>
