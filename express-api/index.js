@@ -1,12 +1,18 @@
 const express = require('express')
-const app = express()
+const mongoose = require("mongoose");
 const cors = require('cors')
 const bodyParser = require('body-parser')
-const stripe = require('stripe')('sk_test_51MLrBsKIJNx0Q9fSzxszYu8ybt0UWkWUeXTHhlRTmghhqbDLctvgQE8X1GFPKgNAcDu5r5GY0SF81qG8zp3E7oi7003lASBb6N');
+const dotenv = require("dotenv");
+dotenv.config();
 
+const connectDB = require("./utils/dbConn");
+const notFound = require("./utils/notFound");
+const app = express()
+connectDB();
+
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const endpointSecret = 'whsec_h...';
-
-const port = 3000
+const  User = require('./userModel')
 
 // parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: false }))
@@ -19,6 +25,21 @@ app.use(bodyParser.json({
 }))
 
 app.use(cors())
+
+app.post('/createuser', async(req,res,next) =>{
+  try {
+    const newUser = new User({
+        ...req.body
+    })
+    await newUser.save()
+    if(!newUser) return res.status(400).json({message: "User not created"})
+    res.status(201).json({message: "User  created", newUser})
+
+  } catch (error) {
+      console.log(error);
+      next(error)
+  }
+})
 
 app.post('/pay', async (req, res) => {
     const {email} = req.body;
@@ -33,28 +54,47 @@ app.post('/pay', async (req, res) => {
 
       res.json({'client_secret': paymentIntent['client_secret']})
 })
-
-app.post('/sub', async (req, res) => {
-  const {email, payment_method} = req.body;
-
-  const customer = await stripe.customers.create({
-    payment_method: payment_method,
-    email: email,
-    invoice_settings: {
-      default_payment_method: payment_method,
-    },
-  });
-
-  const subscription = await stripe.subscriptions.create({
-    customer: customer.id,
-    items: [{ plan: process.env.PLAN}],
-    expand: ['latest_invoice.payment_intent']
-  });
   
-  const status = subscription['latest_invoice']['payment_intent']['status'] 
-  const client_secret = subscription['latest_invoice']['payment_intent']['client_secret']
+app.post('/sub', async (req, res) => {
+  const {email, payment_method, plan, name} = req.body;
 
-  res.json({'client_secret': client_secret, 'status': status});
+    // check if the user exists
+    const user = await User.findOne({ email });
+    if (!user) {
+        return res.status(404).json({ error: "User not found" });
+    }
+    // Check if the user is already subscribed
+    if (user.subscribed) {
+        return res.status(400).json({ error: "User is already subscribed" });
+    }
+
+    const customer = await stripe.customers.create({
+      payment_method: payment_method,
+      email: email,
+      currency: usd,
+      name: name,
+      invoice_settings: {
+        default_payment_method: payment_method,
+      },
+    });
+
+    const subscription = await stripe.subscriptions.create({
+      customer: customer.id,
+      items: [{ plan: plan}],
+      expand: ['latest_invoice.payment_intent']
+    });
+    
+    if(subscription){
+      console.log(customer);
+    }
+
+    const status = subscription['latest_invoice']['payment_intent']['status'] 
+    const client_secret = subscription['latest_invoice']['payment_intent']['client_secret']
+
+    res.status(200).json({'client_secret': client_secret, 'status': status});
+
+    console.log({'client_secret': client_secret});
+    console.log({'status': status});
 })
 
 app.post('/webhooks', (req, res) => {
@@ -83,4 +123,11 @@ app.post('/webhooks', (req, res) => {
   res.json({received: true});
 })
 
-app.listen(port, () => console.log(`Example app listening on port ${port}!`))
+app.use(notFound);
+
+mongoose.connection.once("open", () => {
+  console.log("connected to DB");
+  app.listen(process.env.PORT, () => {
+    console.log(`connected to backend - ${process.env.PORT}`);
+  });
+});
