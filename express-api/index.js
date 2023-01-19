@@ -2,7 +2,7 @@ const express = require('express')
 const app = express()
 const cors = require('cors')
 const bodyParser = require('body-parser')
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const stripe = require('stripe')('sk_test_51MLrBsKIJNx0Q9fSzxszYu8ybt0UWkWUeXTHhlRTmghhqbDLctvgQE8X1GFPKgNAcDu5r5GY0SF81qG8zp3E7oi7003lASBb6N');
 
 const endpointSecret = 'whsec_h...';
 
