@@ -39,6 +39,7 @@ function HomePage() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [plan, setPlan] = useState("");
+  const [planID, setPlanID] = useState("");
 
   const stripe = useStripe();
   const elements = useElements();
@@ -97,11 +98,12 @@ function HomePage() {
     if (result.error) {
       console.log(result.error.message);
     } else {
+      console.log(name, email, result.paymentMethod.id, plan);
       const res = await axios.post("http://localhost:3000/sub", {
         name: name,
         email: email,
         payment_method: result.paymentMethod.id,
-        plan: plan,
+        plan: planID,
       });
       // eslint-disable-next-line camelcase
       log("Response: >>>>>> ", res.data);
@@ -181,10 +183,14 @@ function HomePage() {
             value={plan}
             onChange={(e) => {
               if (e.target.value === "standard") {
-                return setPlan(process.env.STANDARD_PRICE_ID);
+                setPlanID(process.env.STANDARD_PRICE_ID);
+                setPlan(e.target.value);
+                return;
               }
               if (e.target.value === "premium") {
-                return setPlan(process.env.PREMIUM_PRICE_ID);
+                setPlanID(process.env.PREMIUM_PRICE_ID);
+                setPlan(e.target.value);
+                return;
               }
               return;
             }}
@@ -194,7 +200,6 @@ function HomePage() {
           </select>
         </div>
         <CardInput />
-        {/* <CardElement /> */}
         <div className={classes.div}>
           <Button
             variant="contained"
