@@ -37,6 +37,9 @@ const UserSchema = new mongoose.Schema({
     enum: ["basic", "standard", "premium"],
     default: "basic"
   },
+  customerIdOnStripe:{
+    type: String
+  }
   
 });
 
